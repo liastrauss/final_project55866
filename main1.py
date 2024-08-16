@@ -171,6 +171,16 @@ def fill_all_missing_values(dataframe):
     fill_missing_categorical_values(dataframe)
     return dataframe
 
+def make_cols_numeric(dataframe, col_list):
+    for col in col_list:
+        if dataframe[col].dtype == 'object':
+            dataframe[col] = dataframe[col].astype(str)
+            # Step 1: Remove commas
+            dataframe[col] = dataframe[col].str.replace(',', '')
+            # Step 2: Convert to numeric (integer type)
+            dataframe[col] = pd.to_numeric(dataframe[col], errors='coerce')
+    return dataframe
+
 
 def encode_data(dataframe, cols: list[str]):
     """
@@ -413,6 +423,7 @@ def create_xgboost_classifier(X_train, y_train, X_test, y_test):
     print(classification_report(y_test, y_predict))
     return y_predict
 
+
 def create_xgboost_classifier1(X_train, y_train, X_test, y_test):
     # Step 1: Identify unique values in the target variable
     unique_values = y_train.unique()
@@ -436,6 +447,7 @@ def create_xgboost_classifier1(X_train, y_train, X_test, y_test):
     y_predict_original = pd.Series(y_predict).map(inverse_value_mapping)
 
     print(classification_report(y_test, y_predict_original))
+
 
 # def create_decision_tree_classifier(X_train, y_train, X_test, y_test):
 #     clf_tree = tree.DecisionTreeClassifier()
@@ -463,6 +475,7 @@ def create_decision_tree_classifier1(X_train, y_train, X_test, y_test):
     visualise_tree(clf_tree, X_train.columns.tolist())
     return y_predict
 
+
 def find_optimal_tree_depth(X_train, y_train, X_test, y_test):
     depths = range(1, 21)
     for depth in depths:
@@ -472,6 +485,7 @@ def find_optimal_tree_depth(X_train, y_train, X_test, y_test):
         accuracy = accuracy_score(y_test, y_predict)
         print(f"Accuracy for depth {depth}: {accuracy}")
 
+
 def visualise_tree(clf, feature_cols):
     fig = plt.figure(figsize=(25, 20))
     _ = plot_tree(clf,
@@ -479,6 +493,8 @@ def visualise_tree(clf, feature_cols):
                   filled=True)
     plt.show()
     fig.savefig('tree.jpeg')
+
+
 #
 # def visualize_decision_tree(clf_tree, feature_names):
 #     dot_data = tree.export_graphviz(clf_tree, out_file=None, feature_names=feature_names)
@@ -695,13 +711,13 @@ def analyze_pca_components(pca_components, pca, numeric_features):
 
 
 def main():
-    df = pd.read_csv("best cities.csv").copy()
-    df = shorten_column_names(df, df.columns.tolist())
+    df = pd.read_csv("most_subscribed_youtube_channels.csv").copy()
+    # df = shorten_column_names(df, df.columns.tolist())
     # print(df.columns.tolist())
-    # print("data type:")
-    # print(check_data_type(df))
-    # print("missing values:")
-    # print(find_missing_values(df))
+    print("data type:")
+    print(check_data_type(df))
+    print("missing values:")
+    print(find_missing_values(df))
     # print("statisti")
     # print(statistics_dictionary(df))
 
@@ -709,57 +725,61 @@ def main():
     col_list = df.columns.tolist()
     # print(col_list)
     # Remove non-numeric columns from the list
-    non_numeric_cols = ['City', 'Country']
+    non_numeric_cols = ['Youtuber', 'Category']
     numeric_cols = [col for col in col_list if col not in non_numeric_cols]
+    df = make_cols_numeric(df.copy(), numeric_cols)
     #
-    # # Check if the numeric columns contain only positive values
-    # for col in numeric_cols:
-    #     if not numeric_is_positive(df, col):
-    #         print(f"Column {col} has negative values")
+    print("data type:")
+    print(check_data_type(df))
+    # Check if the numeric columns contain only positive values
+    for col in numeric_cols:
+        if not numeric_is_positive(df, col):
+            print(f"Column {col} has negative values")
+        else:
+            print("all numerics positive")
 
-    # phase 2 - data preparation
-    cols_to_encode = ['City', 'Country']
-    # print('Dataframe Statistics:\n')
-    encoded_df = encode_data(df, cols_to_encode)
-    # encoded_df.to_csv('encoded data.csv', index=False)
-    #
-    # phase 3 - linear regression
-    target_var = 'CoworkingSpaces'
-    # print("\nLinear Regression!:\n")
-    # perform_linear_regression(encoded_df, 0.7, target_var)
+            # phase 2 - data preparation
+            # cols_to_encode = non_numeric_cols
+            # print('Dataframe Statistics:\n')
+            # encoded_df = encode_data(df, cols_to_encode)
+            # encoded_df.to_csv('encoded data.csv', index=False)
+            #
+            # phase 3 - linear regression
+            # target_var = 'CoworkingSpaces'
+            # print("\nLinear Regression!:\n")
+            # perform_linear_regression(encoded_df, 0.7, target_var)
 
-    # phase 4 - logistics regression
-    # print("\nLogistic Regression!:\n")
-    # binary_tree_df = turn_col_to_binary(encoded_df, target_var)
-    # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
-    # initiate_log_regression(log_data_train, log_data_test, target_var)
+            # phase 4 - logistics regression
+            # print("\nLogistic Regression!:\n")
+            # binary_tree_df = turn_col_to_binary(encoded_df, target_var)
+            # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
+            # initiate_log_regression(log_data_train, log_data_test, target_var)
 
-    # phase 3 - Model Training and Evaluation
-    df_without_target = encoded_df.drop(columns=[target_var])
-    X_train, X_test, y_train, y_test = train_test_split(df_without_target, encoded_df[target_var],
-                                                        test_size=0.3, random_state=1)
-    # print("Random Forest Classifier:")
-    # create_random_forest_model(X_train, y_train, X_test, y_test)
-    # print("Ada Boost Classifier:")
-    # create_ada_boost_classifier(X_train, y_train, X_test, y_test)
-    # print("XGBoost Classifier:") not good :(
-    # create_xgboost_classifier1(X_train, y_train, X_test, y_test)
-    print("decision tree classifier:")
-    create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
+            # phase 3 - Model Training and Evaluation
+            # df_without_target = encoded_df.drop(columns=[target_var])
+            # X_train, X_test, y_train, y_test = train_test_split(df_without_target, encoded_df[target_var],
+            # test_size = 0.3, random_state = 1)
+            # print("Random Forest Classifier:")
+            # create_random_forest_model(X_train, y_train, X_test, y_test)
+            # print("Ada Boost Classifier:")
+            # create_ada_boost_classifier(X_train, y_train, X_test, y_test)
+            # print("XGBoost Classifier:") not good :(
+            # create_xgboost_classifier1(X_train, y_train, X_test, y_test)
+            # print("decision tree classifier:")
+            # create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
 
-    # phase 4 - Model optimization
-    # print("Optimize XGBoost Classifier:")
-    # optimize_xgboost_classifier(X_train, y_train)
+            # phase 4 - Model optimization
+            # print("Optimize XGBoost Classifier:")
+            # optimize_xgboost_classifier(X_train, y_train)
 
-    # # phase 5 - Clustering
-    # X_train_scaled = feature_scaling(X_train.copy())
-    # reduced_data, pca = dimensional_reduction(X_train_scaled, 2, use_tsne=False)
-    # # find_number_of_clusters(reduced_data)
-    # cluster_labels = perform_kmeans_clustering(reduced_data, 4)
-    # analyze_pca_components(pca_components=reduced_data, pca=pca, numeric_features=X_train.columns.tolist())
+            # # phase 5 - Clustering
+            # X_train_scaled = feature_scaling(X_train.copy())
+            # reduced_data, pca = dimensional_reduction(X_train_scaled, 2, use_tsne=False)
+            # # find_number_of_clusters(reduced_data)
+            # cluster_labels = perform_kmeans_clustering(reduced_data, 4)
+            # analyze_pca_components(pca_components=reduced_data, pca=pca, numeric_features=X_train.columns.tolist())
 
     return 0
-
 
 if __name__ == '__main__':
     main()
