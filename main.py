@@ -741,7 +741,7 @@ def main():
     # print("Random Forest Classifier:")
     # create_random_forest_model(X_train, y_train, X_test, y_test)
     # print("Ada Boost Classifier:")
-    # create_ada_boost_classifier(X_train, y_train, X_test, y_test)
+    create_ada_boost_classifier(X_train, y_train, X_test, y_test)
     # print("XGBoost Classifier:") not good :(
     # create_xgboost_classifier1(X_train, y_train, X_test, y_test)
     print("decision tree classifier:")

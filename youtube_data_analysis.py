@@ -5,13 +5,13 @@ import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.manifold import TSNE
 from sklearn.metrics import mean_absolute_error, mean_squared_error, confusion_matrix, precision_score, recall_score, \
     f1_score, roc_auc_score, accuracy_score
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.svm import SVC
-from xgboost import XGBClassifier
+from xgboost import XGBClassifier, XGBRegressor
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split, GridSearchCV
 import statsmodels.formula.api as smf
@@ -22,10 +22,12 @@ from sklearn.decomposition import PCA
 import re
 from sklearn import tree
 import pydotplus
-from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.tree import DecisionTreeClassifier, plot_tree, DecisionTreeRegressor
 from sklearn import metrics
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
+
 from sklearn.ensemble import AdaBoostRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import r2_score
@@ -443,8 +445,8 @@ def main_old():
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # Part 5 - Model Training and Evaluation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-def create_random_forest_model(X_train, y_train, X_test, y_test):
-    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1)
+def create_random_forest_regression_model(X_train, y_train, X_test, y_test):
+    rf = RandomForestRegressor(n_estimators=50, n_jobs=-1)
     rf.fit(X_train, y_train)
     y_predict = rf.predict(X_test)
     # print(classification_report(y_test, y_predict))
@@ -454,7 +456,32 @@ def create_random_forest_model(X_train, y_train, X_test, y_test):
     print('Random Forest Score: {0:2.2f}'.format(rf.score(X_train, y_train)))
     print('Scores on Test Set:')
     print('Random Forest Score: {0:2.2f}'.format(rf.score(X_test, y_test)))
-    return y_predict
+    # precision = precision_score(y_test, y_predict, average='macro', zero_division=0)
+    # recall = recall_score(y_test, y_predict, average='macro', zero_division=0)
+    # f1 = f1_score(y_test, y_predict, average='macro', zero_division=0)
+    # print('Random Forest \n precision: ', precision, '\n', 'recall: ', recall, '\n', 'f1: ', f1)
+    print('Random Forest accuracy_score:', accuracy_score(y_test, y_predict))
+    return rf
+
+
+def create_random_forest_classification_model(X_train, y_train, X_test, y_test):
+    rf = RandomForestClassifier(n_estimators=100, n_jobs=1)
+    rf.fit(X_train, y_train)
+    y_predict = rf.predict(X_test)
+
+    # Print classification metrics
+    print('Classification Report:\n', classification_report(y_test, y_predict, zero_division=0))
+    print('Accuracy Score: {0:.2f}'.format(accuracy_score(y_test, y_predict)))
+    print('Precision Score: {0:.2f}'.format(precision_score(y_test, y_predict, average='macro', zero_division=0)))
+    print('Recall Score: {0:.2f}'.format(recall_score(y_test, y_predict, average='macro', zero_division=0)))
+    print('F1 Score: {0:.2f}'.format(f1_score(y_test, y_predict, average='macro', zero_division=0)))
+
+    print('Scores on Training Set:')
+    print('Random Forest Training Score: {0:.2f}'.format(rf.score(X_train, y_train)))
+    print('Scores on Test Set:')
+    print('Random Forest Test Score: {0:.2f}'.format(rf.score(X_test, y_test)))
+
+    return rf
 
 
 # Import Support Vector Classifier
@@ -477,9 +504,9 @@ def create_ada_boost_classifier(X_train, y_train, X_test, y_test):
 
 def create_ada_boost_classifier1(X_train, y_train, X_test, y_test):
     abc = AdaBoostClassifier(
-        base_estimator=DecisionTreeClassifier(max_depth=1),  # Simplify the base estimator
-        n_estimators=50,  # Reduce the number of estimators
-        learning_rate=0.1  # Lower learning rate
+        estimator=DecisionTreeClassifier(max_depth=5),  # Simplify the base estimator
+        n_estimators=100,  # Reduce the number of estimators
+        learning_rate=0.01  # Lower learning rate
     )
 
     abc.fit(X_train, y_train)
@@ -491,10 +518,44 @@ def create_ada_boost_classifier1(X_train, y_train, X_test, y_test):
     print('ada_boost_classifier Score: {0:2.2f}'.format(abc.score(X_train, y_train)))
     print('Scores on Test Set:')
     print('ada_boost_classifier Score: {0:2.2f}'.format(abc.score(X_test, y_test)))
+    precision = precision_score(y_test, y_predict, average='macro', zero_division=0)
+    recall = recall_score(y_test, y_predict, average='macro', zero_division=0)
+    f1 = f1_score(y_test, y_predict, average='macro', zero_division=0)
+    print('ada_boost \n precision: ', precision, '\n', 'recall: ', recall, '\n', 'f1: ', f1)
     print('abc accuracy_score:', accuracy_score(y_test, y_predict))
 
-    return y_predict
+    return abc
 
+
+def create_adaboost_regressor(X_train, y_train, X_test, y_test):
+    # Initialize AdaBoost Regressor with a DecisionTreeRegressor as the base estimator
+    adaboost_reg = AdaBoostRegressor(
+        estimator=DecisionTreeRegressor(max_depth=4),  # Base estimator for AdaBoost
+        n_estimators=100,  # Number of boosting stages
+        learning_rate=0.01  # Step size for updating the weights
+    )
+
+    # Fit the model
+    adaboost_reg.fit(X_train, y_train)
+
+    # Predict on the test set
+    y_predict = adaboost_reg.predict(X_test)
+
+    # Print evaluation metrics for regression
+    mse = mean_squared_error(y_test, y_predict)
+    mae = mean_absolute_error(y_test, y_predict)
+    r2 = r2_score(y_test, y_predict)
+
+    print('AdaBoost Regressor Mean Squared Error: {0:.2f}'.format(mse))
+    print('AdaBoost Regressor Mean Absolute Error: {0:.2f}'.format(mae))
+    print('AdaBoost Regressor R^2 Score: {0:.2f}'.format(r2))
+
+    print('Scores on Training Set:')
+    print('AdaBoost Training Score: {0:.2f}'.format(adaboost_reg.score(X_train, y_train)))
+    print('Scores on Test Set:')
+    print('AdaBoost Test Score: {0:.2f}'.format(adaboost_reg.score(X_test, y_test)))
+
+    return adaboost_reg
 
 def create_xgboost_classifier(X_train, y_train, X_test, y_test):
     xgb = XGBClassifier()
@@ -505,29 +566,95 @@ def create_xgboost_classifier(X_train, y_train, X_test, y_test):
 
 
 def create_xgboost_classifier1(X_train, y_train, X_test, y_test):
-    # Step 1: Identify unique values in the target variable
-    unique_values = y_train.unique()
-    print("Unique values in y_train before mapping:", unique_values)
+    # # Step 1: Identify unique values in the target variable
+    # unique_values = y_train.unique()
+    # print("Unique values in y_train before mapping:", unique_values)
+    #
+    # # Step 2: Create a mapping from existing values to consecutive integers
+    # value_mapping = {value: idx for idx, value in enumerate(sorted(unique_values))}
+    # print("Value mapping:", value_mapping)
+    #
+    # # Step 3: Map the target variable to the new set of consecutive integers
+    # y_train_mapped = y_train.map(value_mapping)
+    # y_test_mapped = y_test.map(value_mapping)
+    #
+    # # Step 4: Use the mapped target variable for training the model
+    # xgb = XGBClassifier(n_estimators=100, max_depth=6, learning_rate=0.01)
+    # xgb.fit(X_train, y_train_mapped)
+    # y_predict = xgb.predict(X_test)
+    #
+    # # Step 5: Map the predictions back to the original values
+    # inverse_value_mapping = {v: k for k, v in value_mapping.items()}
+    # y_predict_original = pd.Series(y_predict).map(inverse_value_mapping)
+    #
+    # print(classification_report(y_test, y_predict_original, zero_division=0))
+    # print('xgb_boost_classifier Score: {0:2.2f}'.format(xgb.score(X_test, y_test)))
+    # print('Scores on Training Set:')
+    # print('xgb_boost_classifier Score: {0:2.2f}'.format(xgb.score(X_train, y_train_mapped)))
+    # print('Scores on Test Set:')
+    # print('xgb_boost_classifier Score: {0:2.2f}'.format(xgb.score(X_test, y_test)))
+    # precision = precision_score(y_test, y_predict, average='macro', zero_division=0)
+    # recall = recall_score(y_test, y_predict, average='macro', zero_division=0)
+    # f1 = f1_score(y_test, y_predict, average='macro', zero_division=0)
+    # print('xgb_boost \n precision: ', precision, '\n', 'recall: ', recall, '\n', 'f1: ', f1)
+    # print('xgb accuracy_score:', accuracy_score(y_test, y_predict_original))
+    # return xgb
+    # Encode the target variable
+    le = LabelEncoder()
+    y_train_encoded = le.fit_transform(y_train)
+    y_test_encoded = le.transform(y_test)
 
-    # Step 2: Create a mapping from existing values to consecutive integers
-    value_mapping = {value: idx for idx, value in enumerate(sorted(unique_values))}
-    print("Value mapping:", value_mapping)
+    # Train the model
+    xgb_model = XGBClassifier(n_estimators=100, max_depth=6, learning_rate=0.01)
+    xgb_model.fit(X_train, y_train_encoded)
 
-    # Step 3: Map the target variable to the new set of consecutive integers
-    y_train_mapped = y_train.map(value_mapping)
-    y_test_mapped = y_test.map(value_mapping)
+    # Predict
+    y_predict_encoded = xgb_model.predict(X_test)
 
-    # Step 4: Use the mapped target variable for training the model
-    xgb = XGBClassifier()
-    xgb.fit(X_train, y_train_mapped)
-    y_predict = xgb.predict(X_test)
+    # Decode predictions
+    y_predict = le.inverse_transform(y_predict_encoded)
 
-    # Step 5: Map the predictions back to the original values
-    inverse_value_mapping = {v: k for k, v in value_mapping.items()}
-    y_predict_original = pd.Series(y_predict).map(inverse_value_mapping)
+    # Print evaluation metrics
+    print(classification_report(y_test, y_predict, zero_division=0))
+    print('xgb_boost_classifier Score: {0:2.2f}'.format(xgb_model.score(X_test, y_test_encoded)))
+    print('Scores on Training Set:')
+    print('xgb_boost_classifier Score: {0:2.2f}'.format(xgb_model.score(X_train, y_train_encoded)))
+    print('Scores on Test Set:')
+    print('xgb_boost_classifier Score: {0:2.2f}'.format(xgb_model.score(X_test, y_test_encoded)))
+    precision = precision_score(y_test, y_predict, average='macro', zero_division=0)
+    recall = recall_score(y_test, y_predict, average='macro', zero_division=0)
+    f1 = f1_score(y_test, y_predict, average='macro', zero_division=0)
+    print('xgb_boost \n precision: ', precision, '\n', 'recall: ', recall, '\n', 'f1: ', f1)
+    print('xgb accuracy_score:', accuracy_score(y_test, y_predict))
 
-    print(classification_report(y_test, y_predict_original))
+    return xgb_model
 
+
+def create_xgb_regressor(X_train, y_train, X_test, y_test):
+    # Initialize XGBRegressor
+    xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.01, max_depth=6)  # Adjust parameters as needed
+
+    # Fit the model
+    xgb_reg.fit(X_train, y_train)
+
+    # Predict on the test set
+    y_predict = xgb_reg.predict(X_test)
+
+    # Print evaluation metrics for regression
+    mse = mean_squared_error(y_test, y_predict)
+    mae = mean_absolute_error(y_test, y_predict)
+    r2 = r2_score(y_test, y_predict)
+
+    print('XGB Regressor Mean Squared Error: {0:.2f}'.format(mse))
+    print('XGB Regressor Mean Absolute Error: {0:.2f}'.format(mae))
+    print('XGB Regressor R^2 Score: {0:.2f}'.format(r2))
+
+    print('Scores on Training Set:')
+    print('XGB Training Score: {0:.2f}'.format(xgb_reg.score(X_train, y_train)))
+    print('Scores on Test Set:')
+    print('XGB Test Score: {0:.2f}'.format(xgb_reg.score(X_test, y_test)))
+
+    return xgb_reg
 
 # def create_decision_tree_classifier(X_train, y_train, X_test, y_test):
 #     clf_tree = tree.DecisionTreeClassifier()
@@ -546,7 +673,7 @@ def create_xgboost_classifier1(X_train, y_train, X_test, y_test):
 #     plt.show()
 
 def create_decision_tree_classifier1(X_train, y_train, X_test, y_test):
-    clf_tree = tree.DecisionTreeClassifier(max_depth=2, criterion='entropy')
+    clf_tree = tree.DecisionTreeClassifier(max_depth=7, criterion='entropy')
     clf_tree.fit(X_train, y_train)
     y_predict = clf_tree.predict(X_test)
 
@@ -560,10 +687,47 @@ def create_decision_tree_classifier1(X_train, y_train, X_test, y_test):
 
     accuracy = metrics.accuracy_score(y_test, y_predict)
     print("Accuracy:", accuracy)
-    print(classification_report(y_test, y_predict))
-    visualise_tree(clf_tree, X_train.columns.tolist())
-    return y_predict
+    print(classification_report(y_test, y_predict, zero_division=0))
+    # visualise_tree(clf_tree, X_train.columns.tolist())
+    print('clfTree_classifier Score: {0:2.2f}'.format(clf_tree.score(X_test, y_test)))
+    print('Scores on Training Set:')
+    print('clfTree_classifier Score: {0:2.2f}'.format(clf_tree.score(X_train, y_train)))
+    print('Scores on Test Set:')
+    print('clfTree_classifier Score: {0:2.2f}'.format(clf_tree.score(X_test, y_test)))
+    precision = precision_score(y_test, y_predict, average='macro', zero_division=0)
+    recall = recall_score(y_test, y_predict, average='macro', zero_division=0)
+    f1 = f1_score(y_test, y_predict, average='macro', zero_division=0)
+    print('clfTree \n precision: ', precision, '\n', 'recall: ', recall, '\n', 'f1: ', f1)
+    print('clfTree accuracy_score:', accuracy_score(y_test, y_predict))
 
+    return clf_tree
+
+
+def create_decision_tree_regressor(X_train, y_train, X_test, y_test):
+    # Initialize DecisionTreeRegressor
+    dt_reg = DecisionTreeRegressor(max_depth=5, criterion='squared_error')  # Adjust parameters as needed
+
+    # Fit the model
+    dt_reg.fit(X_train, y_train)
+
+    # Predict on the test set
+    y_predict = dt_reg.predict(X_test)
+
+    # Print evaluation metrics for regression
+    mse = mean_squared_error(y_test, y_predict)
+    mae = mean_absolute_error(y_test, y_predict)
+    r2 = r2_score(y_test, y_predict)
+
+    print('Decision Tree Regressor Mean Squared Error: {0:.2f}'.format(mse))
+    print('Decision Tree Regressor Mean Absolute Error: {0:.2f}'.format(mae))
+    print('Decision Tree Regressor R^2 Score: {0:.2f}'.format(r2))
+
+    print('Scores on Training Set:')
+    print('Decision Tree Training Score: {0:.2f}'.format(dt_reg.score(X_train, y_train)))
+    print('Scores on Test Set:')
+    print('Decision Tree Test Score: {0:.2f}'.format(dt_reg.score(X_test, y_test)))
+
+    return dt_reg
 
 def find_optimal_tree_depth(X_train, y_train, X_test, y_test):
     depths = range(1, 21)
@@ -799,23 +963,100 @@ def analyze_pca_components(pca_components, pca, numeric_features):
     plt.show()
 
 
+def discretize_target(y, n_bins=3):
+    # Discretize target variable into bins
+    discretizer = KBinsDiscretizer(n_bins=n_bins, encode='ordinal', strategy='quantile')
+    y_discretized = discretizer.fit_transform(y.values.reshape(-1, 1)).flatten()
+    return y_discretized
+
+
+def create_xgboost_classifier(X_train, y_train, X_test, y_test):
+    # Train XGBClassifier
+    xgb_model = XGBClassifier(n_estimators=100, max_depth=6, learning_rate=0.01)
+    xgb_model.fit(X_train, y_train)
+
+    # Predict
+    y_predict = xgb_model.predict(X_test)
+
+    # Print evaluation metrics
+    print(classification_report(y_test, y_predict, zero_division=0))
+    print('xgb_classifier Score: {0:2.2f}'.format(xgb_model.score(X_test, y_test)))
+    print('Scores on Training Set:')
+    print('xgb_classifier Score: {0:2.2f}'.format(xgb_model.score(X_train, y_train)))
+    print('Scores on Test Set:')
+    print('xgb_classifier Score: {0:2.2f}'.format(xgb_model.score(X_test, y_test)))
+    print('Accuracy Score:', accuracy_score(y_test, y_predict))
+
+    return xgb_model
+
+
+def plot_models(rf, abc, dt, xgb, X_train, y_train):
+    # Create a plot to compare the performance of the models:
+    fig = plt.figure(figsize=(12, 8))
+    rf_plot = plt.plot(y_train, rf.predict(X_train), 'ob',
+                       label='Random Forest - {0:2.2f}'.format(rf.score(X_train, y_train)))
+    abc_plot = plt.plot(y_train, abc.predict(X_train), 'or',
+                       label='AdaBoost - {0:2.2f}'.format(abc.score(X_train, y_train)))
+    dt_plot = plt.plot(y_train, dt.predict(X_train), 'og',
+                       label='Decision Tree - {0:2.2f}'.format(dt.score(X_train, y_train)))
+    xgb_plot = plt.plot(y_train, xgb.predict(X_train), 'oy',
+                       label='XGB - {0:2.2f}'.format(xgb.score(X_train, y_train)))
+    plt.legend(loc=2)
+    plt.xlabel('Observed (True value)')
+    plt.ylabel('Predicted')
+    plt.show()
+
+
+def all_regressors(target_var, df_encoded):
+    df_without_target = df_encoded.drop(columns=[target_var])
+    X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var],
+                                                        test_size=0.3, random_state=42)
+    print("random forest regressor:")
+    rf = create_random_forest_regression_model(X_train, y_train, X_test, y_test)
+    print("ada boost regressor:")
+    abc = create_adaboost_regressor(X_train, y_train, X_test, y_test)
+    print("decision tree regressor:")
+    dt = create_decision_tree_regressor(X_train, y_train, X_test, y_test)
+    print("xgboost regressor:")
+    xgb = create_xgb_regressor(X_train, y_train, X_test, y_test)
+    plot_models(rf, abc, dt, xgb, X_train, y_train)
+
+
+def all_classifiers(target_var, df_encoded):
+    df_encoded[target_var + '_binned'] = discretize_target(df_encoded[target_var], n_bins=5)
+
+    df_without_target = df_encoded.drop(columns=[target_var])
+    X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var + '_binned'],
+                                                        test_size=0.3, random_state=42)
+
+    print("XGBoost Classifier:")
+    xgb_model = create_xgboost_classifier(X_train, y_train, X_test, y_test)
+    # # All the classifiers:
+    print("xgboost classifier:")
+    xgb = create_xgboost_classifier1(X_train, y_train, X_test, y_test)
+    print("decision tree classifier:")
+    dt = create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
+    print("ada boost classifier:")
+    abc = create_ada_boost_classifier1(X_train, y_train, X_test, y_test)
+    print("random forest classifier:")
+    rf = create_random_forest_classification_model(X_train, y_train, X_test, y_test)
+    plot_models(rf, abc, dt, xgb, X_train, y_train)
+
 def main():
     df = pd.read_csv("most_subscribed_youtube_channels.csv").copy()
-    # df = shorten_column_names(df, df.columns.tolist())
-    # print(df.columns.tolist())
-    print("data type:")
-    print(check_data_type(df))
-    print("missing values:")
-    print(find_missing_values(df))
-    fill_missing_categorical_values(df)
-    rows_with_zero_val = find_rows_with_zero_values(df)
-    print("rows with zero values:")
-    print(rows_with_zero_val)
+    # print("data type:")
+    # print(check_data_type(df))
+    # print("missing values:")
+    # print(find_missing_values(df))
+    # fill_missing_categorical_values(df)
+    # rows_with_zero_val = find_rows_with_zero_values(df)
+    # print("rows with zero values:")
+    # print(rows_with_zero_val)
 
     # rows_to_delete = find_rows_with_zero_values(df)
-    df = del_rows(df, rows_with_zero_val)
-    print("after filling rows:")
-    print(df)
+    # df = del_rows(df, rows_with_zero_val)
+    # print("after filling rows:")
+    # print(df)
     # print("missing cells:")
     # find_cells_with_missing_values(df)
     # print("missing rows:")
@@ -824,153 +1065,83 @@ def main():
     # print(statistics_dictionary(df))
 
     # phase 1 - data validation
-    col_list = df.columns.tolist()
+    # col_list = df.columns.tolist()
     # print(col_list)
     # Remove non-numeric columns from the list
-    non_numeric_cols = ['Youtuber', 'category']
-    numeric_cols = [col for col in col_list if col not in non_numeric_cols]
-    df_with_numeric = make_cols_numeric(df.copy(), numeric_cols)
+    # non_numeric_cols = ['Youtuber', 'category']
+    # numeric_cols = [col for col in col_list if col not in non_numeric_cols]
+    # df_with_numeric = make_cols_numeric(df.copy(), numeric_cols)
     #
     # print("data type:")
     # print(check_data_type(df_with_numeric))
-    df_encoded = encode_data(df_with_numeric, non_numeric_cols)
-    print("data type:", check_data_type(df_encoded))
+    # df_encoded = encode_data(df_with_numeric, non_numeric_cols)
+    # print("data type:", check_data_type(df_encoded))
     # print("encoded data:")
     # print(df_encoded)
     # df_encoded.to_csv('youtube_encoded_data.csv', index=False)
+    df_encoded = pd.read_csv("youtube_encoded_data.csv")
+    target_var = 'subscribers'
 
     # phase 3 - linear regression
-    target_var = 'videoViews'
-    # print("\nLinear Regression!:\n")
-    # perform_linear_regression(df_encoded, 0.7, target_var)
+    print("\nLinear Regression!:\n")
+    perform_linear_regression(df_encoded, 0.7, target_var)
 
     # phase 4 - logistics regression
-    # print("\nLogistic Regression!:\n")
-    # binary_tree_df = turn_col_to_binary(df_encoded, target_var)
-    # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
-    # initiate_log_regression(log_data_train, log_data_test, target_var)
+    print("\nLogistic Regression!:\n")
+    binary_tree_df = turn_col_to_binary(df_encoded, target_var)
+    log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
+    initiate_log_regression(log_data_train, log_data_test, target_var)
 
     # phase 3 - Model Training and Evaluation
-    df_without_target = df_encoded.drop(columns=[target_var])
+
+    all_regressors(target_var, df_encoded.copy())
+    all_classifiers(target_var, df_encoded.copy())
+    # X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var + '_binned'],
+    #                                                     test_size=0.3, random_state=42)
+
+    # print("XGBoost Classifier:")
+    # xgb_model = create_xgboost_classifier(X_train, y_train, X_test, y_test)
+    # # df_without_target = df_encoded.drop(columns=[target_var])
+    # # X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var],
+    # #                                                     test_size=0.3, random_state=42)
+    # # # All the classifiers:
+    # print("xgboost classifier:")
+    # xgb = create_xgboost_classifier1(X_train, y_train, X_test, y_test)
+    # print("decision tree classifier:")
+    # dt = create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
+    # print("ada boost classifier:")
+    # abc = create_ada_boost_classifier1(X_train, y_train, X_test, y_test)
+    # print("random forest classifier:")
+    # rf = create_random_forest_classification_model(X_train, y_train, X_test, y_test)
+
+    # # all the regressors:
     # X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var],
     #                                                     test_size=0.3, random_state=42)
-    print("Random Forest Classifier:")
-    # create_random_forest_model(X_train, y_train, X_test, y_test)
-    print("Ada Boost Classifier:")
-    # create_ada_boost_classifier(X_train, y_train, X_test, y_test)
-    # create_ada_boost_classifier1(X_train, y_train, X_test, y_test)
-    # Assuming df is your DataFrame containing the data
-    X = df_encoded.drop(columns=['videoViews'])
-    y = df_encoded['videoViews']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    # print("random forest regressor:")
+    # rf = create_random_forest_regression_model(X_train, y_train, X_test, y_test)
+    # print("ada boost regressor:")
+    # abc = create_adaboost_regressor(X_train, y_train, X_test, y_test)
+    # print("decision tree regressor:")
+    # dt = create_decision_tree_regressor(X_train, y_train, X_test, y_test)
+    # print("xgboost regressor:")
+    # xgb = create_xgb_regressor(X_train, y_train, X_test, y_test)
 
-    # Initialize the AdaBoost Classifier
-    abc = AdaBoostClassifier(
-        estimator=DecisionTreeClassifier(max_depth=3),
-        n_estimators=100,
-        learning_rate=0.1,
-        random_state=42
-    )
+    # # Create a plot to compare the performance of the models:
+    # fig = plt.figure(figsize=(12, 8))
+    # rf_plot = plt.plot(y_train, rf.predict(X_train), 'ob',
+    #                    label='Random Forest - {0:2.2f}'.format(rf.score(X_train, y_train)))
+    # abc_plot = plt.plot(y_train, abc.predict(X_train), 'or',
+    #                    label='AdaBoost - {0:2.2f}'.format(abc.score(X_train, y_train)))
+    # dt_plot = plt.plot(y_train, dt.predict(X_train), 'og',
+    #                    label='Decision Tree - {0:2.2f}'.format(dt.score(X_train, y_train)))
+    # xgb_plot = plt.plot(y_train, xgb.predict(X_train), 'oy',
+    #                    label='XGB - {0:2.2f}'.format(xgb.score(X_train, y_train)))
+    # plt.legend(loc=2)
+    # plt.xlabel('Observed (True value)')
+    # plt.ylabel('Predicted')
+    # plt.show()
 
-    # Fit the model
-    abc.fit(X_train, y_train)
-
-    # Predict on the test set
-    y_pred = abc.predict(X_test)
-
-    # Evaluate the model
-    print(classification_report(y_test, y_pred))
-    print(f"Accuracy: {accuracy_score(y_test, y_pred)}")
-    # Split the data into training and test sets
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-    #
-    # # Initialize the AdaBoost Regressor
-    # abr = AdaBoostRegressor(
-    #     estimator=DecisionTreeRegressor(max_depth=4),
-    #     n_estimators=100,
-    #     learning_rate=0.1,
-    #     random_state=42
-    # )
-    #
-    # # Fit the model
-    # abr.fit(X_train, y_train)
-    #
-    # # Predict on the test set
-    # y_pred = abr.predict(X_test)
-    #
-    # # Evaluate the model
-    # mse = mean_squared_error(y_test, y_pred)
-    # r2 = r2_score(y_test, y_pred)
-    #
-    # print(f"Mean Squared Error: {mse}")
-    # print(f"R-squared: {r2}")
-
-    # Optional: return the predictions
-    # return y_pred
-
-    # print("XGBoost Classifier:")  # not good :(
-    # create_xgboost_classifier1(X_train, y_train, X_test, y_test)
-    # print("decision tree classifier:")
-    # create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
-
-    # phase 4 - Model optimization
-    # print("Optimize XGBoost Classifier:")
-    # optimize_xgboost_classifier(X_train, y_train)
-
-    # # phase 5 - Clustering
-    # X_train_scaled = feature_scaling(X_train.copy())
-    # reduced_data, pca = dimensional_reduction(X_train_scaled, 2, use_tsne=False)
-    # # find_number_of_clusters(reduced_data)
-    # cluster_labels = perform_kmeans_clustering(reduced_data, 4)
-    # analyze_pca_components(pca_components=reduced_data, pca=pca, numeric_features=X_train.columns.tolist())
-
-    # Check if the numeric columns contain only positive values
-    # for col in numeric_cols:
-    #     if not numeric_is_positive(df, col):
-    #         print(f"Column {col} has negative values")
-    #     else:
-    #         print("all numerics positive")
-
-    # phase 2 - data preparation
-    # cols_to_encode = non_numeric_cols
-    # print('Dataframe Statistics:\n')
-    # encoded_df = encode_data(df, cols_to_encode)
-    # encoded_df.to_csv('encoded data.csv', index=False)
-    #
-    # phase 3 - linear regression
-    # target_var = 'CoworkingSpaces'
-    # print("\nLinear Regression!:\n")
-    # perform_linear_regression(encoded_df, 0.7, target_var)
-
-    # phase 4 - logistics regression
-    # print("\nLogistic Regression!:\n")
-    # binary_tree_df = turn_col_to_binary(encoded_df, target_var)
-    # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
-    # initiate_log_regression(log_data_train, log_data_test, target_var)
-
-    # phase 3 - Model Training and Evaluation
-    # df_without_target = encoded_df.drop(columns=[target_var])
-    # X_train, X_test, y_train, y_test = train_test_split(df_without_target, encoded_df[target_var],
-    # test_size = 0.3, random_state = 1)
-    # print("Random Forest Classifier:")
-    # create_random_forest_model(X_train, y_train, X_test, y_test)
-    # print("Ada Boost Classifier:")
-    # create_ada_boost_classifier(X_train, y_train, X_test, y_test)
-    # print("XGBoost Classifier:") not good :(
-    # create_xgboost_classifier1(X_train, y_train, X_test, y_test)
-    # print("decision tree classifier:")
-    # create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
-
-    # phase 4 - Model optimization
-    # print("Optimize XGBoost Classifier:")
-    # optimize_xgboost_classifier(X_train, y_train)
-
-    # # phase 5 - Clustering
-    # X_train_scaled = feature_scaling(X_train.copy())
-    # reduced_data, pca = dimensional_reduction(X_train_scaled, 2, use_tsne=False)
-    # # find_number_of_clusters(reduced_data)
-    # cluster_labels = perform_kmeans_clustering(reduced_data, 4)
-    # analyze_pca_components(pca_components=reduced_data, pca=pca, numeric_features=X_train.columns.tolist())
+    # phase 4 - Model Optimization
 
     return 0
 
