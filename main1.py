@@ -40,6 +40,52 @@ def find_missing_values(dataframe):
     df_columns_with_nulls = dataframe[columns_with_nulls]
     print(df_columns_with_nulls)
 
+def find_rows_with_zero_values(dataframe):
+    """
+    find the rows with zero values
+    :param dataframe:
+    :return:
+    """
+    zero_values = []
+    for col in dataframe.columns:
+
+        for row in dataframe[col].items():
+            if row[1] == '0':
+                if row[0] not in zero_values:
+                    zero_values.append(row[0])
+                # zero_values.append(row[0])
+            # zero_values = [row if val == 0 else None for val in row[1]]
+        # zero_values = (dataframe[] == 0).all(axis=1)
+    # for row in zero_values.index.values.tolist():
+    #     print(row)
+    #     print(zero_values[row])
+    #     print("")
+    return zero_values
+
+def find_cells_with_missing_values(dataframe):
+    """
+    find the cells with missing values
+    :param dataframe:
+    :return:
+    """
+    missing_values = dataframe.isnull()
+    for column in missing_values.columns.values.tolist():
+        print(column)
+        print(missing_values[column].value_counts())
+        print("")
+
+
+def find_number_rows_of_missing_values(dataframe):
+    """
+    find the number of rows with missing values
+    :param dataframe:
+    :return:
+    """
+    missing_values = dataframe.isnull()
+    num_rows = missing_values.any(axis=1).sum()
+    print(f"Number of rows with missing values: {num_rows}")
+    return num_rows
+
 
 def find_mean_of_column(dataframe, column_name):
     mean = dataframe[column_name].mean()
@@ -171,6 +217,7 @@ def fill_all_missing_values(dataframe):
     fill_missing_categorical_values(dataframe)
     return dataframe
 
+
 def make_cols_numeric(dataframe, col_list):
     for col in col_list:
         if dataframe[col].dtype == 'object':
@@ -196,15 +243,18 @@ def encode_data(dataframe, cols: list[str]):
     return dataframe
 
 
-def del_rows(dataframe, row_indices: list[int]):
+def del_rows(dataframe, row_indices: list[int]) -> pd.DataFrame:
     """
     delete the rows from the dataframe
     :param dataframe:
     :param row_indices:
     :return:
     """
-    dataframe = dataframe.drop(row_indices, inplace=True)
-    return dataframe
+    print(dataframe)
+    df = dataframe.copy()
+    df_without_zero = df.drop(row_indices, axis=0)
+    print(df_without_zero)
+    return df_without_zero
 
 
 def shorten_column_names(dataframe, col_list):
@@ -247,7 +297,7 @@ def perform_linear_regression(dataframe, training_set_fraction, target_var):
     print(f"the mean squared error is: {mean_squared_error(y_test, y_pred)}")
 
     # statsmodels model
-    formula = 'CoworkingSpaces ~ ' + '+'.join(x.columns)
+    formula = f'{target_var} ~ ' + '+'.join(x.columns)
     smf_model = smf.ols(formula=formula, data=dataframe)
     results = smf_model.fit()
     y_predicted = results.predict(x_test)
@@ -407,12 +457,12 @@ def create_ada_boost_classifier(X_train, y_train, X_test, y_test):
     abc.fit(X_train, y_train)
     y_predict = abc.predict(X_test)
     print(classification_report(y_test, y_predict))
-    # print('Random Forest Score: {0:2.2f}'.format(abc.score(X_test, y_test)))
-    #
-    # print('Scores on Training Set:')
-    # print('Random Forest Score: {0:2.2f}'.format(abc.score(X_train, y_train)))
-    # print('Scores on Test Set:')
-    # print('Random Forest Score: {0:2.2f}'.format(abc.score(X_test, y_test)))
+    print('ada_boost_classifier Score: {0:2.2f}'.format(abc.score(X_test, y_test)))
+
+    print('Scores on Training Set:')
+    print('ada_boost_classifier Score: {0:2.2f}'.format(abc.score(X_train, y_train)))
+    print('Scores on Test Set:')
+    print('ada_boost_classifier Score: {0:2.2f}'.format(abc.score(X_test, y_test)))
     return y_predict
 
 
@@ -469,6 +519,15 @@ def create_decision_tree_classifier1(X_train, y_train, X_test, y_test):
     clf_tree = tree.DecisionTreeClassifier(max_depth=2, criterion='entropy')
     clf_tree.fit(X_train, y_train)
     y_predict = clf_tree.predict(X_test)
+
+    precision = precision_score(y_test, y_predict, zero_division=0, average='weighted')
+    recall = recall_score(y_test, y_predict, zero_division=0, average='weighted')
+    f1 = f1_score(y_test, y_predict, zero_division=0, average='weighted')
+
+    print(f'Precision: {precision}')
+    print(f'Recall: {recall}')
+    print(f'F1 Score: {f1}')
+
     accuracy = metrics.accuracy_score(y_test, y_predict)
     print("Accuracy:", accuracy)
     print(classification_report(y_test, y_predict))
@@ -718,6 +777,19 @@ def main():
     print(check_data_type(df))
     print("missing values:")
     print(find_missing_values(df))
+    fill_missing_categorical_values(df)
+    rows_with_zero_val = find_rows_with_zero_values(df)
+    print("rows with zero values:")
+    print(rows_with_zero_val)
+
+    # rows_to_delete = find_rows_with_zero_values(df)
+    df = del_rows(df, rows_with_zero_val)
+    print("after filling rows:")
+    print(df)
+    # print("missing cells:")
+    # find_cells_with_missing_values(df)
+    # print("missing rows:")
+    # print(find_number_rows_of_missing_values(df))
     # print("statisti")
     # print(statistics_dictionary(df))
 
@@ -725,61 +797,102 @@ def main():
     col_list = df.columns.tolist()
     # print(col_list)
     # Remove non-numeric columns from the list
-    non_numeric_cols = ['Youtuber', 'Category']
+    non_numeric_cols = ['Youtuber', 'category']
     numeric_cols = [col for col in col_list if col not in non_numeric_cols]
-    df = make_cols_numeric(df.copy(), numeric_cols)
+    df_with_numeric = make_cols_numeric(df.copy(), numeric_cols)
     #
-    print("data type:")
-    print(check_data_type(df))
+    # print("data type:")
+    # print(check_data_type(df_with_numeric))
+    df_encoded = encode_data(df_with_numeric, non_numeric_cols)
+    # print("encoded data:")
+    # print(df_encoded)
+    # df_encoded.to_csv('youtube_encoded_data.csv', index=False)
+
+    # phase 3 - linear regression
+    target_var = 'videoViews'
+    # print("\nLinear Regression!:\n")
+    # perform_linear_regression(df_encoded, 0.7, target_var)
+
+    # phase 4 - logistics regression
+    # print("\nLogistic Regression!:\n")
+    # binary_tree_df = turn_col_to_binary(df_encoded, target_var)
+    # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
+    # initiate_log_regression(log_data_train, log_data_test, target_var)
+
+    # phase 3 - Model Training and Evaluation
+    df_without_target = df_encoded.drop(columns=[target_var])
+    X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var],
+                                                        test_size=0.3, random_state=1)
+    print("Random Forest Classifier:")
+    create_random_forest_model(X_train, y_train, X_test, y_test)
+    print("Ada Boost Classifier:")
+    create_ada_boost_classifier(X_train, y_train, X_test, y_test)
+    print("XGBoost Classifier:")  # not good :(
+    create_xgboost_classifier1(X_train, y_train, X_test, y_test)
+    print("decision tree classifier:")
+    create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
+
+    # phase 4 - Model optimization
+    # print("Optimize XGBoost Classifier:")
+    # optimize_xgboost_classifier(X_train, y_train)
+
+    # # phase 5 - Clustering
+    # X_train_scaled = feature_scaling(X_train.copy())
+    # reduced_data, pca = dimensional_reduction(X_train_scaled, 2, use_tsne=False)
+    # # find_number_of_clusters(reduced_data)
+    # cluster_labels = perform_kmeans_clustering(reduced_data, 4)
+    # analyze_pca_components(pca_components=reduced_data, pca=pca, numeric_features=X_train.columns.tolist())
+
     # Check if the numeric columns contain only positive values
-    for col in numeric_cols:
-        if not numeric_is_positive(df, col):
-            print(f"Column {col} has negative values")
-        else:
-            print("all numerics positive")
+    # for col in numeric_cols:
+    #     if not numeric_is_positive(df, col):
+    #         print(f"Column {col} has negative values")
+    #     else:
+    #         print("all numerics positive")
 
-            # phase 2 - data preparation
-            # cols_to_encode = non_numeric_cols
-            # print('Dataframe Statistics:\n')
-            # encoded_df = encode_data(df, cols_to_encode)
-            # encoded_df.to_csv('encoded data.csv', index=False)
-            #
-            # phase 3 - linear regression
-            # target_var = 'CoworkingSpaces'
-            # print("\nLinear Regression!:\n")
-            # perform_linear_regression(encoded_df, 0.7, target_var)
+    # phase 2 - data preparation
+    # cols_to_encode = non_numeric_cols
+    # print('Dataframe Statistics:\n')
+    # encoded_df = encode_data(df, cols_to_encode)
+    # encoded_df.to_csv('encoded data.csv', index=False)
+    #
+    # phase 3 - linear regression
+    # target_var = 'CoworkingSpaces'
+    # print("\nLinear Regression!:\n")
+    # perform_linear_regression(encoded_df, 0.7, target_var)
 
-            # phase 4 - logistics regression
-            # print("\nLogistic Regression!:\n")
-            # binary_tree_df = turn_col_to_binary(encoded_df, target_var)
-            # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
-            # initiate_log_regression(log_data_train, log_data_test, target_var)
+    # phase 4 - logistics regression
+    # print("\nLogistic Regression!:\n")
+    # binary_tree_df = turn_col_to_binary(encoded_df, target_var)
+    # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
+    # initiate_log_regression(log_data_train, log_data_test, target_var)
 
-            # phase 3 - Model Training and Evaluation
-            # df_without_target = encoded_df.drop(columns=[target_var])
-            # X_train, X_test, y_train, y_test = train_test_split(df_without_target, encoded_df[target_var],
-            # test_size = 0.3, random_state = 1)
-            # print("Random Forest Classifier:")
-            # create_random_forest_model(X_train, y_train, X_test, y_test)
-            # print("Ada Boost Classifier:")
-            # create_ada_boost_classifier(X_train, y_train, X_test, y_test)
-            # print("XGBoost Classifier:") not good :(
-            # create_xgboost_classifier1(X_train, y_train, X_test, y_test)
-            # print("decision tree classifier:")
-            # create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
+    # phase 3 - Model Training and Evaluation
+    # df_without_target = encoded_df.drop(columns=[target_var])
+    # X_train, X_test, y_train, y_test = train_test_split(df_without_target, encoded_df[target_var],
+    # test_size = 0.3, random_state = 1)
+    # print("Random Forest Classifier:")
+    # create_random_forest_model(X_train, y_train, X_test, y_test)
+    # print("Ada Boost Classifier:")
+    # create_ada_boost_classifier(X_train, y_train, X_test, y_test)
+    # print("XGBoost Classifier:") not good :(
+    # create_xgboost_classifier1(X_train, y_train, X_test, y_test)
+    # print("decision tree classifier:")
+    # create_decision_tree_classifier1(X_train, y_train, X_test, y_test)
 
-            # phase 4 - Model optimization
-            # print("Optimize XGBoost Classifier:")
-            # optimize_xgboost_classifier(X_train, y_train)
+    # phase 4 - Model optimization
+    # print("Optimize XGBoost Classifier:")
+    # optimize_xgboost_classifier(X_train, y_train)
 
-            # # phase 5 - Clustering
-            # X_train_scaled = feature_scaling(X_train.copy())
-            # reduced_data, pca = dimensional_reduction(X_train_scaled, 2, use_tsne=False)
-            # # find_number_of_clusters(reduced_data)
-            # cluster_labels = perform_kmeans_clustering(reduced_data, 4)
-            # analyze_pca_components(pca_components=reduced_data, pca=pca, numeric_features=X_train.columns.tolist())
+    # # phase 5 - Clustering
+    # X_train_scaled = feature_scaling(X_train.copy())
+    # reduced_data, pca = dimensional_reduction(X_train_scaled, 2, use_tsne=False)
+    # # find_number_of_clusters(reduced_data)
+    # cluster_labels = perform_kmeans_clustering(reduced_data, 4)
+    # analyze_pca_components(pca_components=reduced_data, pca=pca, numeric_features=X_train.columns.tolist())
 
     return 0
+
 
 if __name__ == '__main__':
     main()
