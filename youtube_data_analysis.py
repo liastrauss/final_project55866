@@ -1042,6 +1042,7 @@ def plot_models(rf, abc, dt, xgb, X_train, y_train):
     plt.legend(loc=2)
     plt.xlabel('Observed (True value)')
     plt.ylabel('Predicted')
+    plt.title('Model Performance on Training Set')
     plt.show()
 
 
@@ -1088,10 +1089,10 @@ def all_regressors(target_var, df_encoded):
     print("\noptimize adaboost regressor:")
     # optimize_adaboost_regressor(X_train, y_train)
     plot_models(rf, abc, dt, xgb, X_train, y_train)
-    # plot_feature_importance(rf, df_without_target.columns.tolist())
-    # plot_feature_importance(abc, df_without_target.columns.tolist())
-    # plot_feature_importance(dt, df_without_target.columns.tolist())
-    # plot_feature_importance(xgb, df_without_target.columns.tolist())
+    plot_feature_importance(rf, df_without_target.columns.tolist())
+    plot_feature_importance(abc, df_without_target.columns.tolist())
+    plot_feature_importance(dt, df_without_target.columns.tolist())
+    plot_feature_importance(xgb, df_without_target.columns.tolist())
     # feature_importance_print(rf, df_without_target.columns.tolist())
     # feature_importance_print(abc, df_without_target.columns.tolist())
     # feature_importance_print(dt, df_without_target.columns.tolist())
@@ -1120,6 +1121,7 @@ def all_classifiers(target_var, df_encoded):
     rf = create_random_forest_classification_model(X_train, y_train, X_test, y_test)
     plot_models(rf, abc, dt, xgb, X_train, y_train)
 
+
 def main():
     df = pd.read_csv("most_subscribed_youtube_channels.csv").copy()
     # print("data type:")
@@ -1139,8 +1141,8 @@ def main():
     # find_cells_with_missing_values(df)
     # print("missing rows:")
     # print(find_number_rows_of_missing_values(df))
-    # print("statisti")
-    # print(statistics_dictionary(df))
+    print("statistic")
+    print(statistics_dictionary(df))
 
     # phase 1 - data validation
     # col_list = df.columns.tolist()
@@ -1161,14 +1163,14 @@ def main():
     target_var = 'subscribers'
 
     # # phase 3 - linear regression
-    # print("\nLinear Regression!:\n")
-    # perform_linear_regression(df_encoded, 0.7, target_var)
+    print("\nLinear Regression!:\n")
+    perform_linear_regression(df_encoded, 0.7, target_var)
     #
     # # phase 4 - logistics regression
-    # print("\nLogistic Regression!:\n")
-    # binary_tree_df = turn_col_to_binary(df_encoded, target_var)
-    # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
-    # initiate_log_regression(log_data_train, log_data_test, target_var)
+    print("\nLogistic Regression!:\n")
+    binary_tree_df = turn_col_to_binary(df_encoded, target_var)
+    log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
+    initiate_log_regression(log_data_train, log_data_test, target_var)
 
     # phase 5 - Model Training and Evaluation
 
