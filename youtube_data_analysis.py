@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import KMeans
@@ -326,7 +327,6 @@ def perform_linear_regression(dataframe, training_set_fraction, target_var):
     regression_slope, regression_intercept = np.polyfit(y_test, y_predicted, 1)
     regression_line = regression_slope * np.array(lims) + regression_intercept
     plt.plot(lims, regression_line, 'b-', alpha=0.75, label='Regression Line')
-
     # Adding a legend, title and showing the plot
     plt.legend()
     plt.title(f'Linear Regression Model Predicting {target_var}')
@@ -372,7 +372,7 @@ def initiate_log_regression(train_data, test_data, target_var):
     :return:
     """
     # part 1 - perform logistic regression
-    lr = LogisticRegression(solver='lbfgs', max_iter=10000)
+    lr = LogisticRegression(solver='liblinear', max_iter=10000)
     scaler = StandardScaler()
 
     y_train = train_data[target_var]
@@ -504,7 +504,6 @@ def create_ada_boost_classifier(X_train, y_train, X_test, y_test):
 
 def create_ada_boost_classifier1(X_train, y_train, X_test, y_test):
     abc = AdaBoostClassifier(
-        estimator=DecisionTreeClassifier(max_depth=5),  # Simplify the base estimator
         n_estimators=100,  # Reduce the number of estimators
         learning_rate=0.01  # Lower learning rate
     )
@@ -530,8 +529,8 @@ def create_ada_boost_classifier1(X_train, y_train, X_test, y_test):
 def create_adaboost_regressor(X_train, y_train, X_test, y_test):
     # Initialize AdaBoost Regressor with a DecisionTreeRegressor as the base estimator
     adaboost_reg = AdaBoostRegressor(
-        estimator=DecisionTreeRegressor(max_depth=4),  # Base estimator for AdaBoost
-        n_estimators=100,  # Number of boosting stages
+        estimator=DecisionTreeRegressor(max_depth=5),  # Base estimator for AdaBoost
+        n_estimators=50,  # Number of boosting stages
         learning_rate=0.01  # Step size for updating the weights
     )
 
@@ -554,6 +553,7 @@ def create_adaboost_regressor(X_train, y_train, X_test, y_test):
     print('AdaBoost Training Score: {0:.2f}'.format(adaboost_reg.score(X_train, y_train)))
     print('Scores on Test Set:')
     print('AdaBoost Test Score: {0:.2f}'.format(adaboost_reg.score(X_test, y_test)))
+    # print('AdaBoost accuracy_score:', accuracy_score(y_test, y_predict))
 
     return adaboost_reg
 
@@ -632,7 +632,7 @@ def create_xgboost_classifier1(X_train, y_train, X_test, y_test):
 
 def create_xgb_regressor(X_train, y_train, X_test, y_test):
     # Initialize XGBRegressor
-    xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.01, max_depth=6)  # Adjust parameters as needed
+    xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.05, max_depth=3)  # Adjust parameters as needed
 
     # Fit the model
     xgb_reg.fit(X_train, y_train)
@@ -653,6 +653,7 @@ def create_xgb_regressor(X_train, y_train, X_test, y_test):
     print('XGB Training Score: {0:.2f}'.format(xgb_reg.score(X_train, y_train)))
     print('Scores on Test Set:')
     print('XGB Test Score: {0:.2f}'.format(xgb_reg.score(X_test, y_test)))
+    # print('XGB accuracy_score:', accuracy_score(y_test, y_predict))
 
     return xgb_reg
 
@@ -673,7 +674,7 @@ def create_xgb_regressor(X_train, y_train, X_test, y_test):
 #     plt.show()
 
 def create_decision_tree_classifier1(X_train, y_train, X_test, y_test):
-    clf_tree = tree.DecisionTreeClassifier(max_depth=7, criterion='entropy')
+    clf_tree = tree.DecisionTreeClassifier(max_depth=2, criterion='entropy')
     clf_tree.fit(X_train, y_train)
     y_predict = clf_tree.predict(X_test)
 
@@ -705,7 +706,7 @@ def create_decision_tree_classifier1(X_train, y_train, X_test, y_test):
 
 def create_decision_tree_regressor(X_train, y_train, X_test, y_test):
     # Initialize DecisionTreeRegressor
-    dt_reg = DecisionTreeRegressor(max_depth=5, criterion='squared_error')  # Adjust parameters as needed
+    dt_reg = DecisionTreeRegressor(max_depth=3, criterion='squared_error')  # Adjust parameters as needed
 
     # Fit the model
     dt_reg.fit(X_train, y_train)
@@ -726,18 +727,25 @@ def create_decision_tree_regressor(X_train, y_train, X_test, y_test):
     print('Decision Tree Training Score: {0:.2f}'.format(dt_reg.score(X_train, y_train)))
     print('Scores on Test Set:')
     print('Decision Tree Test Score: {0:.2f}'.format(dt_reg.score(X_test, y_test)))
+    # print('Decision Tree accuracy_score:', accuracy_score(y_test, y_predict))
 
     return dt_reg
 
+
 def find_optimal_tree_depth(X_train, y_train, X_test, y_test):
     depths = range(1, 21)
+    optimal_depth = {'depth': 0, 'accuracy': 0}
     for depth in depths:
-        clf = DecisionTreeClassifier(max_depth=depth)
+        clf = DecisionTreeRegressor(max_depth=depth)
         clf.fit(X_train, y_train)
         y_predict = clf.predict(X_test)
-        accuracy = accuracy_score(y_test, y_predict)
+        accuracy = r2_score(y_test, y_predict)
+        # accuracy = accuracy_score(y_test, y_predict)
         print(f"Accuracy for depth {depth}: {accuracy}")
-
+        if accuracy > optimal_depth['accuracy']:
+            optimal_depth['depth'] = depth
+            optimal_depth['accuracy'] = accuracy
+    return optimal_depth
 
 def visualise_tree(clf, feature_cols):
     fig = plt.figure(figsize=(25, 20))
@@ -801,6 +809,36 @@ def optimize_xgboost_classifier(X_train, y_train):
     print(feature_dict)
 
 
+def optimize_decision_tree_regressor(X_train, y_train):
+    # Define the parameter grid
+    param_grid = {'max_depth': range(1, 21)}
+
+    # Create a DecisionTreeRegressor
+    dt_reg = DecisionTreeRegressor()
+
+    # Perform grid search with cross-validation
+    grid_search = GridSearchCV(estimator=dt_reg, param_grid=param_grid, cv=5)
+    grid_search.fit(X_train, y_train)
+
+    # Print the best hyperparameters and score
+    print("Best Hyperparameters: ", grid_search.best_params_)
+    print("Best Score: ", grid_search.best_score_)
+
+def optimize_adaboost_regressor(X_train, y_train):
+    # Define the parameter grid
+    param_grid = {'n_estimators': [50, 100, 150],
+                  'learning_rate': [0.1, 0.01, 0.001]}
+
+    # Create an AdaBoost Regressor
+    adaboost_reg = AdaBoostRegressor()
+
+    # Perform grid search with cross-validation
+    grid_search = GridSearchCV(estimator=adaboost_reg, param_grid=param_grid, cv=5)
+    grid_search.fit(X_train, y_train)
+
+    # Print the best hyperparameters and score
+    print("Best Hyperparameters: ", grid_search.best_params_)
+    print("Best Score: ", grid_search.best_score_)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # Part 7 - Clustering
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1007,23 +1045,63 @@ def plot_models(rf, abc, dt, xgb, X_train, y_train):
     plt.show()
 
 
+def plot_feature_importance(model, column_names):
+    sort_order = np.argsort(model.feature_importances_)
+    x = range(len(sort_order))
+    y = model.feature_importances_[sort_order]
+    y_ticks = np.array(column_names)[sort_order]
+    fig, ax = plt.subplots(figsize=(12, 8))
+    plt.barh(x, y)
+    plt.title(f'Feature Importance {type(model).__name__}')
+    plt.xlabel('Mean effect size')
+    plt.ylabel('Feature')
+    ax.set_yticks(x)
+    ax.set_yticklabels(y_ticks)
+    plt.show()
+
+
+def feature_importance_print(model, column_names):
+    sort_order = np.argsort(model.feature_importances_)[::-1]
+
+    for i, feature_index in enumerate(sort_order):
+        feature = column_names
+        imp = model.feature_importances_[feature_index]
+        print('{0:d}. {1:s} Weight\t- {2:4.4f}'.format(i + 1, feature, imp))
+
+
 def all_regressors(target_var, df_encoded):
     df_without_target = df_encoded.drop(columns=[target_var])
     X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var],
                                                         test_size=0.3, random_state=42)
-    print("random forest regressor:")
+    # print("random forest regressor optimal depth:")
+    # find_optimal_tree_depth(X_train, y_train, X_test, y_test)
+    print("\nrandom forest regressor:")
     rf = create_random_forest_regression_model(X_train, y_train, X_test, y_test)
-    print("ada boost regressor:")
+    print("\nada boost regressor:")
     abc = create_adaboost_regressor(X_train, y_train, X_test, y_test)
-    print("decision tree regressor:")
+    print("\ndecision tree regressor:")
     dt = create_decision_tree_regressor(X_train, y_train, X_test, y_test)
-    print("xgboost regressor:")
+    print("\nxgboost regressor:")
     xgb = create_xgb_regressor(X_train, y_train, X_test, y_test)
+    print("\noptimize decision tree regressor:")
+    optimize_decision_tree_regressor(X_train, y_train)
+    print("\noptimize adaboost regressor:")
+    # optimize_adaboost_regressor(X_train, y_train)
     plot_models(rf, abc, dt, xgb, X_train, y_train)
+    # plot_feature_importance(rf, df_without_target.columns.tolist())
+    # plot_feature_importance(abc, df_without_target.columns.tolist())
+    # plot_feature_importance(dt, df_without_target.columns.tolist())
+    # plot_feature_importance(xgb, df_without_target.columns.tolist())
+    # feature_importance_print(rf, df_without_target.columns.tolist())
+    # feature_importance_print(abc, df_without_target.columns.tolist())
+    # feature_importance_print(dt, df_without_target.columns.tolist())
+    # feature_importance_print(xgb, df_without_target.columns.tolist())
+
+
 
 
 def all_classifiers(target_var, df_encoded):
-    df_encoded[target_var + '_binned'] = discretize_target(df_encoded[target_var], n_bins=5)
+    df_encoded[target_var + '_binned'] = discretize_target(df_encoded[target_var], n_bins=10)
 
     df_without_target = df_encoded.drop(columns=[target_var])
     X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var + '_binned'],
@@ -1082,20 +1160,20 @@ def main():
     df_encoded = pd.read_csv("youtube_encoded_data.csv")
     target_var = 'subscribers'
 
-    # phase 3 - linear regression
-    print("\nLinear Regression!:\n")
-    perform_linear_regression(df_encoded, 0.7, target_var)
+    # # phase 3 - linear regression
+    # print("\nLinear Regression!:\n")
+    # perform_linear_regression(df_encoded, 0.7, target_var)
+    #
+    # # phase 4 - logistics regression
+    # print("\nLogistic Regression!:\n")
+    # binary_tree_df = turn_col_to_binary(df_encoded, target_var)
+    # log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
+    # initiate_log_regression(log_data_train, log_data_test, target_var)
 
-    # phase 4 - logistics regression
-    print("\nLogistic Regression!:\n")
-    binary_tree_df = turn_col_to_binary(df_encoded, target_var)
-    log_data_train, log_data_test = split_log_regression(binary_tree_df, 0.7)
-    initiate_log_regression(log_data_train, log_data_test, target_var)
+    # phase 5 - Model Training and Evaluation
 
-    # phase 3 - Model Training and Evaluation
-
-    all_regressors(target_var, df_encoded.copy())
-    all_classifiers(target_var, df_encoded.copy())
+    all_regressors(target_var, df_encoded.copy().drop(columns=['rank', 'Youtuber']))
+    # all_classifiers(target_var, df_encoded.copy())
     # X_train, X_test, y_train, y_test = train_test_split(df_without_target, df_encoded[target_var + '_binned'],
     #                                                     test_size=0.3, random_state=42)
 
